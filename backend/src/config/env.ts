@@ -49,6 +49,25 @@ const envSchema = z.object({
         .filter(Boolean),
     ),
   COOKIE_SECURE: booleanString,
+  /** Any SMTP provider (Brevo, Gmail, Mailtrap, …). Empty → emails are only logged to the console. */
+  SMTP_HOST: z.string().trim().default(''),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  /** true for port 465 (implicit TLS); false for 587, which upgrades with STARTTLS. */
+  SMTP_SECURE: booleanString,
+  SMTP_USER: z.string().trim().default(''),
+  SMTP_PASS: z.string().default(''),
+  /** e.g. `LMS <you@gmail.com>` — must be a sender your provider has verified. */
+  EMAIL_FROM: z.string().trim().default(''),
+  /** Development: deliver every email here instead, so seeded `@lms.dev` borrowers stay testable. */
+  EMAIL_REDIRECT_TO: z.union([z.literal(''), z.email('EMAIL_REDIRECT_TO must be an email address')]).default(''),
+  /** Used for the links in emails. */
+  BORROWER_PORTAL_URL: z
+    .url()
+    .default('http://localhost:3000')
+    .transform((url) => url.replace(/\/+$/, '')),
+}).refine((config) => !config.SMTP_HOST || config.EMAIL_FROM, {
+  path: ['EMAIL_FROM'],
+  message: 'EMAIL_FROM is required when SMTP_HOST is set',
 });
 
 const parsed = envSchema.safeParse(process.env);
