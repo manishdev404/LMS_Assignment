@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# environment (real secrets live in .env — never commit it)
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# tests
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
