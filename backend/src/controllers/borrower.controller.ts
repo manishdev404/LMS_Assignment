@@ -6,6 +6,7 @@ import { requireUser } from '../middlewares/auth.middleware';
 import { validatedHandler } from '../middlewares/validate.middleware';
 import * as profileService from '../services/borrower-profile.service';
 import * as applicationService from '../services/loan-application.service';
+import { notifyLoanStatus } from '../services/notification.service';
 import { sendSuccess } from '../utils/api-response';
 import { streamFile } from '../utils/file-response';
 import { toObjectId } from '../utils/mongo';
@@ -39,6 +40,7 @@ export async function downloadSalarySlip(req: Request, res: Response): Promise<v
 export const applyForLoan = validatedHandler<{ body: ApplyLoanInput }>(async (req, res) => {
   const loan = await applicationService.applyForLoan(requireUser(req), req.body);
   sendSuccess(res, { loan }, 201);
+  notifyLoanStatus(loan);
 });
 
 export async function listLoans(req: Request, res: Response): Promise<void> {

@@ -4,6 +4,7 @@ import type { RecordPaymentInput } from '../interfaces/payment.interface';
 import { requireUser } from '../middlewares/auth.middleware';
 import { validatedHandler } from '../middlewares/validate.middleware';
 import * as collectionService from '../services/collection.service';
+import { notifyPaymentRecorded } from '../services/notification.service';
 import { sendSuccess } from '../utils/api-response';
 import { toObjectId } from '../utils/mongo';
 
@@ -23,5 +24,6 @@ export const recordPayment = validatedHandler<{ params: LoanIdParams; body: Reco
       req.body,
     );
     sendSuccess(res, result, 201);
+    notifyPaymentRecorded(result);
   },
 );

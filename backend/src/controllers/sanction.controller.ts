@@ -2,6 +2,7 @@ import type { PaginationQuery } from '../interfaces/common.interface';
 import type { LoanIdParams } from '../interfaces/http.interface';
 import { requireUser } from '../middlewares/auth.middleware';
 import { validatedHandler } from '../middlewares/validate.middleware';
+import { notifyLoanStatus } from '../services/notification.service';
 import * as sanctionService from '../services/sanction.service';
 import { sendSuccess } from '../utils/api-response';
 import { streamFile } from '../utils/file-response';
@@ -15,6 +16,7 @@ export const approveLoan = validatedHandler<{ params: LoanIdParams; body: { note
   async (req, res) => {
     const loan = await sanctionService.approveLoan(requireUser(req), toObjectId(req.params.loanId), req.body.note);
     sendSuccess(res, { loan });
+    notifyLoanStatus(loan);
   },
 );
 
@@ -22,6 +24,7 @@ export const rejectLoan = validatedHandler<{ params: LoanIdParams; body: { reaso
   async (req, res) => {
     const loan = await sanctionService.rejectLoan(requireUser(req), toObjectId(req.params.loanId), req.body.reason);
     sendSuccess(res, { loan });
+    notifyLoanStatus(loan);
   },
 );
 

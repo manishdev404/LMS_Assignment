@@ -4,6 +4,7 @@ import type { LoginInput, RegisterInput } from '../interfaces/auth.interface';
 import { requireUser } from '../middlewares/auth.middleware';
 import { validatedHandler } from '../middlewares/validate.middleware';
 import * as authService from '../services/auth.service';
+import { notifyWelcome } from '../services/notification.service';
 import { sendNoContent, sendSuccess } from '../utils/api-response';
 import { AppError } from '../utils/app-error';
 import { toUserDto } from '../utils/mappers';
@@ -13,6 +14,7 @@ export const registerBorrower = validatedHandler<{ body: RegisterInput }>(async 
   const result = await authService.registerBorrower(req.body);
   setSessionCookie(res, 'borrower', result.token);
   sendSuccess(res, result, 201);
+  notifyWelcome(result.user);
 });
 
 export function login(portal: Portal): RequestHandler {

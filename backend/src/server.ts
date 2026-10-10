@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { connectToDatabase, disconnectFromDatabase } from './db/client';
 import { ensureIndexes } from './db/indexes';
+import { verifyEmailTransport } from './services/email.service';
 
 async function bootstrap(): Promise<void> {
   await connectToDatabase();
@@ -10,6 +11,7 @@ async function bootstrap(): Promise<void> {
 
   const server = createApp().listen(env.PORT, () => {
     console.log(`LMS API listening on http://localhost:${env.PORT}/api`);
+    void verifyEmailTransport();
   });
 
   server.on('error', (error) => {

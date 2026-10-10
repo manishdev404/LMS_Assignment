@@ -3,6 +3,7 @@ import type { LoanIdParams } from '../interfaces/http.interface';
 import { requireUser } from '../middlewares/auth.middleware';
 import { validatedHandler } from '../middlewares/validate.middleware';
 import * as disbursementService from '../services/disbursement.service';
+import { notifyLoanStatus } from '../services/notification.service';
 import { sendSuccess } from '../utils/api-response';
 import { toObjectId } from '../utils/mongo';
 
@@ -18,5 +19,6 @@ export const disburseLoan = validatedHandler<{ params: LoanIdParams; body: { not
       req.body.note,
     );
     sendSuccess(res, { loan });
+    notifyLoanStatus(loan);
   },
 );
