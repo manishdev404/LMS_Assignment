@@ -65,6 +65,10 @@ const envSchema = z.object({
     .url()
     .default('http://localhost:3000')
     .transform((url) => url.replace(/\/+$/, '')),
+  OPERATIONS_DASHBOARD_URL: z
+    .url()
+    .default('http://localhost:3001')
+    .transform((url) => url.replace(/\/+$/, '')),
 }).refine((config) => !config.SMTP_HOST || config.EMAIL_FROM, {
   path: ['EMAIL_FROM'],
   message: 'EMAIL_FROM is required when SMTP_HOST is set',
