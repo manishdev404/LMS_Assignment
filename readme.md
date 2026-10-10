@@ -179,15 +179,21 @@ Files go to **GridFS** in Atlas, so nothing depends on local disk.
 
 ## Email notifications
 
-Borrowers get an email at each step. Delivery uses Nodemailer over SMTP, so any provider works and
-switching providers only means changing `backend/.env`.
+Borrowers get an email at each step, and each dashboard team is emailed when a loan enters its queue.
+Delivery uses Nodemailer over SMTP, so any provider works and switching providers only means changing
+`backend/.env`.
 
-| Trigger | Email |
-| ------- | ----- |
-| Sign-up | Welcome, with a link to start the application |
-| Apply / approve / reject / disburse | Loan status, with the loan details (plus the reason on reject) |
-| Payment recorded | Receipt with UTR and outstanding; "fully repaid and closed" on the final payment |
+| Trigger | Borrower | Staff (dashboard) |
+| ------- | -------- | ----------------- |
+| Sign-up | Welcome | Sales + Admin: new lead |
+| Apply | Application received | Sanction + Admin: application to review |
+| Approve | Approved | Disbursement + Admin: ready to disburse |
+| Reject | Not approved, with the reason | Admin |
+| Disburse | Disbursed | Collection + Admin: now in collection |
+| Payment recorded | Receipt with UTR and outstanding ("loan closed" on the final one) | Admin |
 
+- Staff recipients are every account whose role can open that module (`MODULE_ACCESS`), so Admin gets
+  every staff email. The person who performed the action is not emailed about it.
 - With no `SMTP_HOST`, emails are printed to the API console, so local development needs no account.
 - Sending is fire-and-forget. A provider failure is logged and never fails the loan action.
 - Emails are sent from controllers, not services. So `npm run seed` never emails the seeded `@lms.dev` addresses.
