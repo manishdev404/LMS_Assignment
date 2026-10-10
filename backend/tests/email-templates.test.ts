@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { LoanStatus } from '../src/constants/loan';
-import { escapeHtml, loanStatusEmail, paymentRecordedEmail, welcomeEmail } from '../src/emails/templates';
+import {
+  escapeHtml,
+  loanStatusEmail,
+  loanStatusStaffEmail,
+  newLeadStaffEmail,
+  paymentRecordedEmail,
+  paymentStaffEmail,
+  welcomeEmail,
+} from '../src/emails/templates';
 import type { LoanDto } from '../src/interfaces/loan.interface';
 import type { PaymentDto } from '../src/interfaces/payment.interface';
 
@@ -125,5 +133,47 @@ describe('welcomeEmail', () => {
     const email = welcomeEmail({ name: 'Asha', email: 'asha@example.com' }, PORTAL);
     expect(email.subject).toBe('Welcome to LMS');
     expect(email.text).toContain('Start your application: http://localhost:3000/apply');
+  });
+});
+
+describe('staff emails', () => {
+  const DASHBOARD = 'http://localhost:3001';
+  const staff = { name: 'Sameer Sanction', email: 'sanction@lms.dev' };
+  const actor = { id: 'staff-9', name: 'Divya', role: 'DISBURSEMENT' as const };
+
+  it.each<[LoanStatus, string, string]>([
+    ['APPLIED', 'New loan application LN000042 to review', '/sanction'],
+    ['SANCTIONED', 'Loan LN000042 sanctioned, ready to disburse', '/disbursement'],
+    ['REJECTED', 'Loan application LN000042 rejected', '/overview'],
+    ['DISBURSED', 'Loan LN000042 disbursed, now in collection', '/collection'],
+  ])('%s → "%s", linking to %s', (status, subject, path) => {
+    const email = loanStatusStaffEmail(loan({ status }), staff, DASHBOARD);
+    expect(email?.subject).toBe(subject);
+    expect(email?.text).toContain(`${DASHBOARD}${path}`);
+    expect(email?.text).toContain('Hi Sameer Sanction,');
+  });
+
+  it('names who acted and sends nothing for CLOSED', () => {
+    expect(loanStatusStaffEmail(loan({ status: 'DISBURSED', disbursedBy: actor }), staff, DASHBOARD)?.text).toContain(
+      'Divya disbursed ₹1,00,000 to Asha <b>Rao</b>.',
+    );
+    expect(loanStatusStaffEmail(loan({ status: 'CLOSED' }), staff, DASHBOARD)).toBeNull();
+  });
+
+  it('uses the staff footer, not the borrower one', () => {
+    const { text } = newLeadStaffEmail({ name: 'Asha', email: 'asha@example.com' }, staff, DASHBOARD);
+    expect(text).toContain('staff account works this queue');
+    expect(text).not.toContain('updates to your LMS account');
+    expect(text).toContain('Open Sales: http://localhost:3001/sales');
+  });
+
+  it('reports who recorded a payment and the closing payment', () => {
+    const email = paymentStaffEmail(
+      { loan: loan({ status: 'CLOSED', amountPaid: 112_000, outstanding: 0 }), payment, loanClosed: true },
+      staff,
+      DASHBOARD,
+    );
+    expect(email.subject).toBe('Loan LN000042 is fully repaid and closed');
+    expect(email.text).toContain('Kabir recorded the final payment of ₹25,000');
   });
 });
