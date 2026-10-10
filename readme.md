@@ -36,6 +36,38 @@ MongoDB Atlas (official `mongodb` driver, no Mongoose) · Zod · JWT · bcrypt �
 | **Disbursement** | **Collection — active** | **Collection — closed** |
 | ![Disbursement](screen_shot/operation_Disbursement.png) | ![Collection active](screen_shot/operation_Collection_active.png) | ![Collection closed](screen_shot/operation_Collection_close.png) |
 
+
+### Borrower Portal
+
+#### Home
+![Borrower home](screen_shot/brrow_home_page.png)
+
+#### Apply (active loan in progress)
+![Apply page](screen_shot/brrow_lone_apply_page.png)
+
+#### My Loans
+![My loans](screen_shot/brrow_my_lone.png)
+
+
+### Operations Dashboard
+
+#### Staff Login
+![Staff login](screen_shot/operation_login_page.png)
+
+#### Sales
+![Sales](screen_shot/operation_sales.png)
+
+#### Sanction
+![Sanction](screen_shot/operation_senction.png)
+
+#### Disbursement
+![Disbursement](screen_shot/operation_Disbursement.png)
+
+#### Collection — Active
+![Collection active](screen_shot/operation_Collection_active.png)
+
+#### Collection — Closed
+![Collection closed](screen_shot/operation_Collection_close.png)
 ---
 
 ## Quick start
