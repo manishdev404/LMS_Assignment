@@ -177,18 +177,58 @@ browser. `Authorization: Bearer` is also accepted for API clients.
 type. The service then verifies the real format from its magic bytes, so a renamed `.exe` gets 415.
 Files go to **GridFS** in Atlas, so nothing depends on local disk.
 
+## Email notifications
+
+Borrowers get an email at each step. Delivery uses Nodemailer over SMTP, so any provider works and
+switching providers only means changing `backend/.env`.
+
+| Trigger | Email |
+| ------- | ----- |
+| Sign-up | Welcome, with a link to start the application |
+| Apply / approve / reject / disburse | Loan status, with the loan details (plus the reason on reject) |
+| Payment recorded | Receipt with UTR and outstanding; "fully repaid and closed" on the final payment |
+
+- With no `SMTP_HOST`, emails are printed to the API console, so local development needs no account.
+- Sending is fire-and-forget. A provider failure is logged and never fails the loan action.
+- Emails are sent from controllers, not services. So `npm run seed` never emails the seeded `@lms.dev` addresses.
+- `EMAIL_REDIRECT_TO=you@gmail.com` sends every email to one inbox, which makes the demo borrowers testable.
+
+**Free providers**
+
+| Provider | Free limit | Needs your own domain? | Use for |
+| -------- | ---------- | ---------------------- | ------- |
+| [Brevo](https://www.brevo.com) | 300 emails/day | No, verify a single sender email | **Recommended**: real delivery |
+| Gmail + [App Password](https://myaccount.google.com/apppasswords) | ~500/day | No (needs 2-Step Verification) | Quickest setup with an existing Gmail |
+| [Resend](https://resend.com) | 3,000/month, 100/day | Yes, to email anyone but yourself | Production, with a domain |
+| [Mailtrap](https://mailtrap.io) sandbox | Test inbox | No | Previewing emails; nothing is delivered |
+
+**Brevo setup:** sign up → *Senders, Domains & Dedicated IPs* → add and verify your sender email →
+*SMTP & API* → generate an SMTP key. Then in `backend/.env`:
+
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=<SMTP login shown on that page>
+SMTP_PASS=<SMTP key>
+EMAIL_FROM="LMS <the-sender-you-verified@gmail.com>"
+```
+
+Restart the API. It logs `Email: sending via smtp-relay.brevo.com:587`, or the login error if the
+credentials are wrong.
+
 ## Project structure
 
 ```
 backend/src
 ├── config/        env validation (zod)            ├── services/     business logic (BRE, workflow, modules)
-├── constants/     roles, loan rules, BRE, upload  ├── controllers/  thin HTTP handlers
+├── constants/     roles, loan rules, BRE, upload  ├── controllers/  thin HTTP handlers (+ email triggers)
 ├── db/            client, collections, indexes,   ├── routes/       one router per module + RBAC chain
 │                  GridFS, transactions            ├── utils/        errors, JWT, money, dates, mappers
 ├── interfaces/    documents, DTOs, request types  ├── scripts/      seed.ts
 ├── validations/   zod schemas per module          └── app.ts / server.ts
-└── middlewares/   authenticate/authorize, validate, upload, errors, rate limit
-backend/tests      BRE + loan-math unit tests
+├── middlewares/   authenticate/authorize, validate, upload, errors, rate limit
+└── emails/        borrower email templates (text + HTML)
+backend/tests      BRE, loan-math and email-template unit tests
 
 Borrower_Portal/src      app/ (/, /login, /register, /apply, /my-loans) · components/apply · components/loans · lib · proxy.ts
 Operations_Dashboard/src app/(dashboard)/{overview,sales,sanction,disbursement,collection} · components/modules · lib/rbac.ts · proxy.ts
@@ -200,7 +240,7 @@ Operations_Dashboard/src app/(dashboard)/{overview,sales,sanction,disbursement,c
 | ----- | ------- | ------- |
 | backend | `npm run dev` / `build` / `start` | API in watch mode / compile / run compiled |
 | backend | `npm run seed` / `seed:demo` | role accounts / plus demo borrowers |
-| backend | `npm test` | unit tests (BRE boundaries, PAN, SI rounding, dates) |
+| backend | `npm test` | unit tests (BRE boundaries, PAN, SI rounding, dates, email templates) |
 | all apps | `npm run typecheck` | `tsc --noEmit` |
 | Next apps | `npm run dev` / `build` / `start` / `lint` | Next.js |
 
