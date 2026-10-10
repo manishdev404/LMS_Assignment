@@ -1,0 +1,38 @@
+PRE-SEEDED LOGIN CREDENTIALS
+============================
+
+Source: backend/src/scripts/seed.ts
+Seed (run inside backend/):
+  npm run seed        -> role accounts only (re-running resets their passwords)
+  npm run seed:demo   -> role accounts + demo borrowers (existing demo users are skipped)
+
+Apps:
+  Operations Dashboard  http://localhost:3001
+  Borrower Portal       http://localhost:3000
+  Backend API           http://localhost:4000
+
+
+1. ROLE ACCOUNTS  (npm run seed)
+--------------------------------
+Role          Name                 Email                   Password       Login at
+------------  -------------------  ----------------------  -------------  --------------------
+ADMIN         Aarav Admin          admin@lms.dev           Admin@123      Operations Dashboard
+SALES         Sneha Sales          sales@lms.dev           Sales@123      Operations Dashboard
+SANCTION      Sameer Sanction      sanction@lms.dev        Sanction@123   Operations Dashboard
+DISBURSEMENT  Divya Disbursement   disbursement@lms.dev    Disburse@123   Operations Dashboard
+COLLECTION    Kabir Collection     collection@lms.dev      Collect@123    Operations Dashboard
+BORROWER      Bhavna Borrower      borrower@lms.dev        Borrower@123   Borrower Portal
+
+
+2. DEMO BORROWERS  (npm run seed:demo)
+--------------------------------------
+Password for all: Borrower@123      Login at: Borrower Portal
+
+Email                   Name              Stage               Loan
+----------------------  ----------------  ------------------  ------------------------------------------
+lead.new@lms.dev        Nikhil New        REGISTERED          -
+lead.rejected@lms.dev   Rohan Rejected    BRE_REJECTED        - (salary 18,000 fails BRE)
+lead.ready@lms.dev      Riya Ready        DOCUMENT_UPLOADED   - (details + salary slip done, no loan)
+applied@lms.dev         Arjun Applied     APPLIED             150,000 / 180 days
+sanctioned@lms.dev      Sara Sanctioned   SANCTIONED          75,000 / 90 days
+active@lms.dev          Aditya Active     DISBURSED           100,000 / 365 days, 25,000 payment recorded

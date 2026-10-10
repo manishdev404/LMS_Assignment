@@ -20,6 +20,22 @@ Operations_Dashboard (Next.js, :3001) ──┘   (rewrite,                     
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Node.js · Express 5 ·
 MongoDB Atlas (official `mongodb` driver, no Mongoose) · Zod · JWT · bcrypt · Multer → GridFS · Vitest
 
+## Screenshots
+
+**Borrower Portal**
+
+| Home | Apply (active loan in progress) | My loans |
+| ---- | ------------------------------- | -------- |
+| ![Borrower home](screen_shot/brrow_home_page.png) | ![Apply page](screen_shot/brrow_lone_apply_page.png) | ![My loans](screen_shot/brrow_my_lone.png) |
+
+**Operations Dashboard**
+
+| Staff login | Sales | Sanction |
+| ----------- | ----- | -------- |
+| ![Staff login](screen_shot/operation_login_page.png) | ![Sales](screen_shot/operation_sales.png) | ![Sanction](screen_shot/operation_senction.png) |
+| **Disbursement** | **Collection — active** | **Collection — closed** |
+| ![Disbursement](screen_shot/operation_Disbursement.png) | ![Collection active](screen_shot/operation_Collection_active.png) | ![Collection closed](screen_shot/operation_Collection_close.png) |
+
 ---
 
 ## Quick start
@@ -66,7 +82,7 @@ Created by `npm run seed` in `backend/`. The seed is idempotent, and re-running 
 
 `npm run seed:demo` also adds `lead.new@`, `lead.rejected@`, `lead.ready@`, `applied@`,
 `sanctioned@` and `active@lms.dev` (password `Borrower@123`), so every dashboard queue has data.
-With `NEXT_PUBLIC_SHOW_DEMO_LOGINS=true`, the dashboard login page offers one-click demo sign-in.
+With `NEXT_PUBLIC_SHOW_DEMO_LOGINS=true`, the dashboard and portal login pages offer one-click demo sign-in.
 
 ## End-to-end walkthrough
 
