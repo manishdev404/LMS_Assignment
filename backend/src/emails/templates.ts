@@ -6,8 +6,8 @@ import type { UserDto } from '../interfaces/user.interface';
 import { formatInr } from '../utils/money';
 
 /**
- * Borrower email templates. Pure functions (no env, no I/O) so they are unit-testable;
- * `portalUrl` is the Borrower Portal origin used for links.
+ * Borrower and staff email templates. Pure functions (no env, no I/O) so they are unit-testable;
+ * `portalUrl` / `dashboardUrl` are the Borrower Portal and Operations Dashboard origins used for links.
  *
  * Email HTML rules: table layout and inline styles only (Gmail/Outlook ignore most <style> and
  * flex/grid), longhand font properties, and `bgcolor` next to `background` for Outlook.
@@ -19,17 +19,25 @@ export interface EmailContent {
   html: string;
 }
 
+export interface StaffRecipient {
+  name: string;
+  email: string;
+}
+
 type Tone = 'info' | 'success' | 'danger';
 
 type DetailRow = [label: string, value: string, emphasis?: boolean];
 
 interface EmailParts {
+  /** Picks the footer: why this person is receiving the email. */
+  audience: 'borrower' | 'staff';
   subject: string;
   /** Status label above the heading, e.g. "Approved". */
   badge: { label: string; tone: Tone };
   heading: string;
-  /** The borrower's email, shown as a chip under the heading. */
-  account: string;
+  /** Shown as a chip under the heading: the borrower's email, or the loan number for staff. */
+  chip: string;
+  /** Recipient's name for the greeting. */
   name: string;
   paragraphs: string[];
   details?: DetailRow[];
@@ -89,7 +97,7 @@ function formatDate(iso: string): string {
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 
-function renderHeader({ badge, heading, account }: EmailParts): string {
+function renderHeader({ badge, heading, chip }: EmailParts): string {
   const tone = TONES[badge.tone];
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center">
@@ -103,7 +111,7 @@ function renderHeader({ badge, heading, account }: EmailParts): string {
 </td></tr>
 <tr><td align="center" style="padding-top:12px;${font(24, 32, COLOR.heading)}">${escapeHtml(heading)}</td></tr>
 <tr><td align="center" style="padding-top:12px">
-  <span style="display:inline-block;padding:4px 12px;border:1px solid ${COLOR.border};border-radius:16px;${font(14, 20, COLOR.body, 500)}">${escapeHtml(account)}</span>
+  <span style="display:inline-block;padding:4px 12px;border:1px solid ${COLOR.border};border-radius:16px;${font(14, 20, COLOR.body, 500)}">${escapeHtml(chip)}</span>
 </td></tr>
 </table>`;
 }
@@ -138,14 +146,15 @@ function renderButton({ label, url }: EmailParts['action']): string {
 <p style="margin:24px 0 0;${font(12, 18, COLOR.muted)}">If the button doesn't work, copy this link into your browser:<br><a href="${href}" target="_blank" style="color:${COLOR.primary};word-break:break-all">${href}</a></p>`;
 }
 
-const FOOTER_LINES = [
-  `You received this email to let you know about important updates to your ${BRAND} account.`,
-  'This is an automated message, so replies to it are not monitored.',
-];
+const FOOTER_REASON: Record<EmailParts['audience'], string> = {
+  borrower: `You received this email to let you know about important updates to your ${BRAND} account.`,
+  staff: `You received this email because your ${BRAND} staff account works this queue.`,
+};
 
 function render(parts: EmailParts): EmailContent {
-  const { subject, heading, name, paragraphs, details = [], action } = parts;
+  const { audience, subject, heading, name, paragraphs, details = [], action } = parts;
   const copyright = `© ${new Date().getFullYear()} ${BRAND} · ${BRAND_FULL}`;
+  const footerLines = [FOOTER_REASON[audience], 'This is an automated message, so replies to it are not monitored.'];
 
   const text = [
     heading,
@@ -153,7 +162,7 @@ function render(parts: EmailParts): EmailContent {
     ...paragraphs,
     details.map(([label, value]) => `${label}: ${value}`).join('\n'),
     `${action.label}: ${action.url}`,
-    ['—', ...FOOTER_LINES, copyright].join('\n'),
+    ['—', ...footerLines, copyright].join('\n'),
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -188,7 +197,7 @@ ${renderDetails(details)}
 ${renderButton(action)}
   </td></tr>
   <tr><td align="center" style="padding:24px 16px 0;${font(12, 18, COLOR.muted)}">
-    ${FOOTER_LINES.join('<br>')}<br><br>${escapeHtml(copyright)}
+    ${footerLines.map(escapeHtml).join('<br>')}<br><br>${escapeHtml(copyright)}
   </td></tr>
   </table>
 </td></tr>
@@ -199,7 +208,7 @@ ${renderButton(action)}
   return { subject, text, html };
 }
 
-// ── Templates ────────────────────────────────────────────────────────────────
+// ── Borrower emails ──────────────────────────────────────────────────────────
 
 function loanDetails(loan: LoanDto): DetailRow[] {
   return [
@@ -213,10 +222,11 @@ function loanDetails(loan: LoanDto): DetailRow[] {
 
 export function welcomeEmail(user: Pick<UserDto, 'name' | 'email'>, portalUrl: string): EmailContent {
   return render({
+    audience: 'borrower',
     subject: `Welcome to ${BRAND}`,
     badge: { label: 'Account created', tone: 'info' },
     heading: `Welcome to ${BRAND}`,
-    account: user.email,
+    chip: user.email,
     name: user.name,
     paragraphs: [
       'Your borrower account is ready. Add your details and a salary slip to check your eligibility, then apply for a loan in minutes.',
@@ -271,7 +281,8 @@ export function loanStatusEmail(loan: LoanDto, portalUrl: string): EmailContent 
   if (!copy) return null;
   return render({
     ...copy(loan),
-    account: loan.applicant.email,
+    audience: 'borrower',
+    chip: loan.applicant.email,
     name: loan.applicant.fullName,
     details: loanDetails(loan),
     action: { label: 'View your loan', url: `${portalUrl}/my-loans` },
@@ -281,12 +292,13 @@ export function loanStatusEmail(loan: LoanDto, portalUrl: string): EmailContent 
 export function paymentRecordedEmail({ loan, payment, loanClosed }: RecordPaymentResult, portalUrl: string): EmailContent {
   const amount = formatInr(payment.amount);
   return render({
+    audience: 'borrower',
     subject: loanClosed
       ? `Loan ${loan.loanNumber} is fully repaid and closed`
       : `Payment of ${amount} received for loan ${loan.loanNumber}`,
     badge: loanClosed ? { label: 'Loan closed', tone: 'success' } : { label: 'Payment received', tone: 'success' },
     heading: loanClosed ? 'Your loan is fully repaid' : 'We received your payment',
-    account: loan.applicant.email,
+    chip: loan.applicant.email,
     name: loan.applicant.fullName,
     paragraphs: [
       loanClosed
@@ -302,5 +314,142 @@ export function paymentRecordedEmail({ loan, payment, loanClosed }: RecordPaymen
       ['Outstanding', formatInr(loan.outstanding), true],
     ],
     action: { label: 'View your loan', url: `${portalUrl}/my-loans` },
+  });
+}
+
+// ── Staff emails (Operations Dashboard) ──────────────────────────────────────
+
+function actorName(actor: { name: string } | null): string {
+  return actor?.name ?? 'A team member';
+}
+
+function staffLoanDetails(loan: LoanDto): DetailRow[] {
+  return [
+    ['Loan number', loan.loanNumber],
+    ['Borrower', loan.applicant.fullName],
+    ['Borrower email', loan.applicant.email],
+    ['Loan amount', formatInr(loan.principal)],
+    ['Tenure', `${loan.tenureDays} days`],
+    ['Total repayment', formatInr(loan.totalRepayment), true],
+  ];
+}
+
+export function newLeadStaffEmail(
+  borrower: Pick<UserDto, 'name' | 'email'>,
+  recipient: StaffRecipient,
+  dashboardUrl: string,
+): EmailContent {
+  return render({
+    audience: 'staff',
+    subject: `New borrower sign-up: ${borrower.name}`,
+    badge: { label: 'New lead', tone: 'info' },
+    heading: 'A new borrower signed up',
+    chip: borrower.email,
+    name: recipient.name,
+    paragraphs: [
+      `${borrower.name} just created a borrower account and has not applied for a loan yet. This is a good time to follow up.`,
+    ],
+    details: [
+      ['Name', borrower.name],
+      ['Email', borrower.email],
+    ],
+    action: { label: 'Open Sales', url: `${dashboardUrl}/sales` },
+  });
+}
+
+type StaffStatusCopy = (
+  loan: LoanDto,
+  dashboardUrl: string,
+) => Pick<EmailParts, 'subject' | 'badge' | 'heading' | 'paragraphs' | 'action'> & { extraDetails?: DetailRow[] };
+
+/** One entry per queue a loan can enter; each links to the module that now owns the loan. */
+const STAFF_STATUS_COPY: Partial<Record<LoanStatus, StaffStatusCopy>> = {
+  [LOAN_STATUS.APPLIED]: (loan, url) => ({
+    subject: `New loan application ${loan.loanNumber} to review`,
+    badge: { label: 'Awaiting sanction', tone: 'info' },
+    heading: 'New loan application',
+    paragraphs: [
+      `${loan.applicant.fullName} applied for ${formatInr(loan.principal)} over ${loan.tenureDays} days. The application is waiting in the Sanction queue.`,
+    ],
+    action: { label: 'Review in Sanction', url: `${url}/sanction` },
+  }),
+  [LOAN_STATUS.SANCTIONED]: (loan, url) => ({
+    subject: `Loan ${loan.loanNumber} sanctioned, ready to disburse`,
+    badge: { label: 'Ready to disburse', tone: 'success' },
+    heading: 'Loan sanctioned',
+    paragraphs: [
+      `${actorName(loan.sanctionedBy)} approved ${loan.applicant.fullName}'s loan of ${formatInr(loan.principal)}. It is now waiting in the Disbursement queue.`,
+    ],
+    extraDetails: [['Sanctioned by', actorName(loan.sanctionedBy)]],
+    action: { label: 'Open Disbursement', url: `${url}/disbursement` },
+  }),
+  [LOAN_STATUS.REJECTED]: (loan, url) => ({
+    subject: `Loan application ${loan.loanNumber} rejected`,
+    badge: { label: 'Rejected', tone: 'danger' },
+    heading: 'Loan application rejected',
+    paragraphs: [
+      `${actorName(loan.rejectedBy)} rejected ${loan.applicant.fullName}'s application for ${formatInr(loan.principal)}.`,
+      ...(loan.rejectionReason ? [`Reason: ${loan.rejectionReason}`] : []),
+    ],
+    extraDetails: [['Rejected by', actorName(loan.rejectedBy)]],
+    action: { label: 'Open Overview', url: `${url}/overview` },
+  }),
+  [LOAN_STATUS.DISBURSED]: (loan, url) => ({
+    subject: `Loan ${loan.loanNumber} disbursed, now in collection`,
+    badge: { label: 'In collection', tone: 'success' },
+    heading: 'Loan disbursed',
+    paragraphs: [
+      `${actorName(loan.disbursedBy)} disbursed ${formatInr(loan.principal)} to ${loan.applicant.fullName}. The loan is now active in the Collection queue.`,
+    ],
+    extraDetails: [['Disbursed by', actorName(loan.disbursedBy)]],
+    action: { label: 'Open Collection', url: `${url}/collection` },
+  }),
+};
+
+/** Staff email for a loan that has just entered `loan.status`'s queue, or null when there is none. */
+export function loanStatusStaffEmail(loan: LoanDto, recipient: StaffRecipient, dashboardUrl: string): EmailContent | null {
+  const copy = STAFF_STATUS_COPY[loan.status];
+  if (!copy) return null;
+  const { extraDetails = [], ...parts } = copy(loan, dashboardUrl);
+  return render({
+    ...parts,
+    audience: 'staff',
+    chip: loan.loanNumber,
+    name: recipient.name,
+    details: [...staffLoanDetails(loan), ...extraDetails],
+  });
+}
+
+export function paymentStaffEmail(
+  { loan, payment, loanClosed }: RecordPaymentResult,
+  recipient: StaffRecipient,
+  dashboardUrl: string,
+): EmailContent {
+  const amount = formatInr(payment.amount);
+  const recorder = payment.recordedBy.name;
+  return render({
+    audience: 'staff',
+    subject: loanClosed
+      ? `Loan ${loan.loanNumber} is fully repaid and closed`
+      : `Payment of ${amount} recorded for loan ${loan.loanNumber}`,
+    badge: loanClosed ? { label: 'Loan closed', tone: 'success' } : { label: 'Payment recorded', tone: 'success' },
+    heading: loanClosed ? 'Loan closed' : 'Payment recorded',
+    chip: loan.loanNumber,
+    name: recipient.name,
+    paragraphs: [
+      loanClosed
+        ? `${recorder} recorded the final payment of ${amount} from ${loan.applicant.fullName}. The loan was fully repaid and closed automatically.`
+        : `${recorder} recorded a payment of ${amount} from ${loan.applicant.fullName}.`,
+    ],
+    details: [
+      ['Loan number', loan.loanNumber],
+      ['Borrower', loan.applicant.fullName],
+      ['UTR', payment.utr],
+      ['Payment date', formatDate(payment.paymentDate)],
+      ['Amount paid', amount],
+      ['Total paid', `${formatInr(loan.amountPaid)} of ${formatInr(loan.totalRepayment)}`],
+      ['Outstanding', formatInr(loan.outstanding), true],
+    ],
+    action: { label: 'Open Collection', url: `${dashboardUrl}/collection` },
   });
 }
